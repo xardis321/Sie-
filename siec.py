@@ -1,4 +1,3 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -9,6 +8,7 @@ class activation_fcn(object):
         pass
 
     def output(self, layer, name, derivative=False):
+        # Get the specified activation function or print an error for an invalid function
         method = getattr(self, str(name), "Invalid_function")
         return method(layer, derivative)
 
@@ -17,36 +17,24 @@ class activation_fcn(object):
         return None
 
     def linear(self, layer, derivative=False):
-        out = 0
-        if not derivative:
-            out = layer['activation_potential']
-        else:
-            out = np.ones(shape=np.shape(layer['activation_potential']))
+        # Linear activation function or its derivative
+        out = layer['activation_potential'] if not derivative else np.ones(shape=np.shape(layer['activation_potential']))
         return out
 
     def logistic(self, layer, derivative=False):
-        out = 0
-        if not derivative:
-            out = 1.0 / (1.0 + np.exp(-layer['activation_potential']))
-        else:
-            out = layer['output'] * (1.0 - layer['output'])
+        # Logistic (sigmoid) activation function or its derivative
+        out = 1.0 / (1.0 + np.exp(-layer['activation_potential'])) if not derivative else layer['output'] * (1.0 - layer['output'])
         return out
 
     def tanh(self, layer, derivative=False):
-        out = 0
-        if not derivative:
-            out = (np.exp(layer['activation_potential']) - np.exp(-layer['activation_potential'])) / (
-                np.exp(layer['activation_potential']) + np.exp(-layer['activation_potential'])) + 1e-8
-        else:
-            out = 1.0 - np.power(layer['output'], 2)
+        # Hyperbolic tangent (tanh) activation function or its derivative
+        out = (np.exp(layer['activation_potential']) - np.exp(-layer['activation_potential'])) / (
+            np.exp(layer['activation_potential']) + np.exp(-layer['activation_potential'])) + 1e-8 if not derivative else 1.0 - np.power(layer['output'], 2)
         return out
 
     def relu(self, layer, derivative=False):
-        out = 0
-        if not derivative:
-            out = np.maximum(0, layer['activation_potential'])
-        else:
-            out = layer['activation_potential'] >= 0
+        # Rectified Linear Unit (ReLU) activation function or its derivative
+        out = np.maximum(0, layer['activation_potential']) if not derivative else layer['activation_potential'] >= 0
         return out
 
 class loss_fcn(object):
@@ -54,6 +42,7 @@ class loss_fcn(object):
         pass
 
     def loss(self, loss, expected, outputs, derivative):
+        # Get the specified loss function or print an error for an invalid function
         method = getattr(self, str(loss), lambda: "Invalid loss function")
         return method(expected, outputs, derivative)
 
@@ -62,19 +51,13 @@ class loss_fcn(object):
         return None
 
     def mse(self, expected, outputs, derivative=False):
-        error_value = 0
-        if not derivative:
-            error_value = 0.5 * np.power(expected - outputs, 2)
-        else:
-            error_value = -(expected - outputs)
+        # Mean Squared Error (MSE) loss function or its derivative
+        error_value = 0.5 * np.power(expected - outputs, 2) if not derivative else -(expected - outputs)
         return error_value
 
     def binary_cross_entropy(self, expected, outputs, derivative=False):
-        error_value = 0
-        if not derivative:
-            error_value = -expected * np.log(outputs + 1e-8) - (1 - expected) * np.log(1 - outputs + 1e-8)
-        else:
-            error_value = -(expected / outputs - (1 - expected + 1e-8) / (1 - outputs + 1e-8))
+        # Binary Cross-Entropy loss function or its derivative
+        error_value = -expected * np.log(outputs + 1e-8) - (1 - expected) * np.log(1 - outputs + 1e-8) if not derivative else -(expected / outputs - (1 - expected + 1e-8) / (1 - outputs + 1e-8))
         return error_value
 
 class Neural_network(object):
@@ -82,6 +65,7 @@ class Neural_network(object):
         pass
 
     def create_network(self, structure):
+        # Initialize the neural network based on the specified structure
         self.nnetwork = [structure[0]]
         for i in range(1, len(structure)):
             new_layer = {
@@ -97,6 +81,7 @@ class Neural_network(object):
         return self.nnetwork
 
     def forward_propagate(self, nnetwork, inputs):
+        # Perform forward propagation through the neural network
         af = activation_fcn()
         inp = inputs.copy()
         for i in range(1, len(nnetwork)):
@@ -108,6 +93,7 @@ class Neural_network(object):
         return inp
 
     def backward_propagate(self, loss_function, nnetwork, expected):
+        # Perform backward propagation through the neural network
         af = activation_fcn()
         loss = loss_fcn()
         N = len(nnetwork) - 1
@@ -123,7 +109,7 @@ class Neural_network(object):
 
             nnetwork[i]['delta'] = np.multiply(errors, af.output(nnetwork[i], nnetwork[i]['activation_function'],
                                                                    derivative=True))
-### Dodanie momentum, kontroluje ono wpływ poprzednich aktualizacni na aktualne
+### Add momentum method, controlling the influence of previous updates on current ones
     def update_weights(self, nnetwork, inputs, l_rate, momentum_alpha):
         inp = inputs
         for i in range(1, len(nnetwork)):
@@ -141,21 +127,22 @@ class Neural_network(object):
             nnetwork[i]['prev_update'] = gradient_update + momentum_update
 
             inp = nnetwork[i]['output']
-## Dodanie metody darken_moody do funkcji train
+## Add the darken_moody method to the train function
 
     def train(self, nnetwork, x_train, y_train, l_rate=0.01, n_epoch=100, loss_function='mse', verbose=1,
-              lrate_method=None, l_rate_start=None, momentum_alpha=0.9,tau =100 ): # dodanie tau - stałej
+              lrate_method=None, l_rate_start=None, momentum_alpha=0.9, tau=100):  # Add tau - a constant
         l_rate_orig = l_rate_start if l_rate_start is not None else l_rate
         for epoch in range(n_epoch):
             sum_error = 0
             for iter, (x_row, y_row) in enumerate(zip(x_train, y_train)):
                 self.forward_propagate(nnetwork, x_row)
                 loss = loss_fcn()
-                sum_error = np.sum(loss.loss(loss_function, y_row, nnetwork[-1]['output'], derivative=False))
+                sum_error = np.sum(
+                    loss.loss(loss_function, y_row, nnetwork[-1]['output'], derivative=False))
                 self.backward_propagate(loss_function, nnetwork, y_row)
 
                 if lrate_method == 'darken_moody':
-                    l_rate = l_rate_orig / ((1.0 + epoch + 1e-8)*tau)  # l_rate modifykowane za pomocą wzoru
+                    l_rate = l_rate_orig / ((1.0 + epoch + 1e-8) * tau)  # Modify l_rate using the formula
 
                 self.update_weights(nnetwork, x_row, l_rate, momentum_alpha)
 
@@ -171,12 +158,11 @@ class Neural_network(object):
         return out
 
 
-
 def generate_regression_data(n=30):
     # Generate regression dataset
     X = np.linspace(-5, 5, n).reshape(-1, 1)
     y = np.sin(2 * X) + np.cos(X) + 5
-    # simulate noise
+    # Simulate noise
     data_noise = np.random.normal(0, 0.2, n).reshape(-1, 1)
     # Generate training data
     Y = y + data_noise
@@ -196,10 +182,9 @@ def test_regression():
                  {'type': 'dense', 'units': 8, 'activation_function': 'relu', 'bias': True},
                  {'type': 'dense', 'units': 1, 'activation_function': 'linear', 'bias': True}]
 
-
     network = model.create_network(structure)
 
-    model.train(network, X, Y, 0.001, 5000, 'mse', 0, 'darken_moody', 0.1, 0.1,100)
+    model.train(network, X, Y, 0.001, 5000, 'mse', 0, 'darken_moody', 0.1, 0.1, 100)
 
     predicted = model.predict(network, X)
     std = np.std(predicted - Y)
@@ -251,7 +236,7 @@ def test_classification():
 
     network = model.create_network(structure)
 
-    model.train(network, X, Y, 0.001, 2000, 'binary_cross_entropy', 0, 'darken_moody', 0.1, 0.9,100)
+    model.train(network, X, Y, 0.001, 2000, 'binary_cross_entropy', 0, 'darken_moody', 0.1, 0.9, 100)
 
     y = model.predict(network, X)
     t = 0
